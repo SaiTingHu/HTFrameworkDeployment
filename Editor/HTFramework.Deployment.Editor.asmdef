@@ -1,0 +1,20 @@
+{
+    "name": "HTFramework.Deployment.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:7b65453a364e1774bb7db0e5a7454a24",
+        "GUID:83f631a6180cc5a41982c9354b6cc704",
+        "GUID:8050ffd74b71b294a9a3ba0941ea74f2"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
