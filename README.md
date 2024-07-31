@@ -12,7 +12,7 @@ HTFramework的Deployment模块，必须依赖于HTFramework主框架使用。
 
 ## 模块简介
 
-- Deployment - 轻量级资源部署管线，整合资源打包、资源版本构建、资源版本更新为一体，快速实现资源部署和交付游戏。
+- [Deployment](https://wanderer.blog.csdn.net/article/details/140823964) - 轻量级资源部署管线，整合资源打包、资源版本构建、资源版本更新为一体，快速实现资源部署和交付游戏。
 
 ## 使用方法
 
