@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
@@ -42,6 +43,7 @@ namespace HT.Framework.Deployment
             }
         }
 
+        private List<Type> _types;
         private bool _isCanBuild = false;
 
         protected override bool IsEnableRuntimeData => false;
@@ -50,11 +52,44 @@ namespace HT.Framework.Deployment
         {
             base.OnDefaultEnable();
 
+            _types = ReflectionToolkit.GetTypesInAllAssemblies(type =>
+            {
+                return typeof(IDownloadFileHelper).IsAssignableFrom(type) && typeof(IDownloadFileHelper) != type;
+            }, false);
             _isCanBuild = string.IsNullOrEmpty(AssetDatabase.GetAssetPath(Target.gameObject));
         }
         protected override void OnInspectorDefaultGUI()
         {
             base.OnInspectorDefaultGUI();
+
+            EditorGUILayout.BeginHorizontal();
+            GUI.enabled = !EditorApplication.isPlaying && _types.Count > 0;
+            EditorGUILayout.LabelField("Download File Helper", GUILayout.Width(LabelWidth));
+            if (GUILayout.Button(Target.HelperType, EditorStyles.popup, GUILayout.Width(EditorGUIUtility.currentViewWidth - LabelWidth - 25)))
+            {
+                GenericMenu gm = new GenericMenu();
+                gm.AddItem(new GUIContent("<None>"), Target.HelperType == "<None>", () =>
+                {
+                    Undo.RecordObject(target, "Change Download File Helper");
+                    Target.HelperType = "<None>";
+                    HasChanged();
+                });
+                for (int i = 0; i < _types.Count; i++)
+                {
+                    int j = i;
+                    gm.AddItem(new GUIContent(_types[j].FullName), Target.HelperType == _types[j].FullName, () =>
+                    {
+                        Undo.RecordObject(target, "Change Download File Helper");
+                        Target.HelperType = _types[j].FullName;
+                        HasChanged();
+                    });
+                }
+                gm.ShowAsContext();
+            }
+            GUI.enabled = true;
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
             Target.ResourcePathType = (DeploymentConfig.PathType)EditorGUILayout.EnumPopup("Local Resource Path", Target.ResourcePathType);
@@ -106,17 +141,24 @@ namespace HT.Framework.Deployment
             GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
+            GUI.color = Color.green;
             GUILayout.Label("Build New Deployment Version", EditorStyles.largeLabel);
+            GUI.color = Color.white;
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
+            GUI.color = Color.green;
             GUILayout.Label("Version", GUILayout.Width(60));
             Target.BuildVersion = EditorGUILayout.TextField(Target.BuildVersion);
+            GUI.color = Color.white;
             GUI.enabled = _isCanBuild && !string.IsNullOrEmpty(Target.BuildVersion);
-            GUI.backgroundColor = Color.yellow;
+            GUI.backgroundColor = Color.green;
             if (GUILayout.Button("Build " + Target.BuildVersion))
             {
-                BuildNewDeploymentVersion(Target.BuildVersion);
+                if (EditorUtility.DisplayDialog("Build New Deployment Version", $"是否确认构建一个新的资源版本 [{Target.BuildVersion}]？如果该版本已存在，将被覆盖。", "是的", "我再想想"))
+                {
+                    BuildNewDeploymentVersion(Target.BuildVersion);
+                }
             }
             GUI.backgroundColor = Color.white;
             GUI.enabled = true;
@@ -133,6 +175,8 @@ namespace HT.Framework.Deployment
         /// </summary>
         private void BuildNewDeploymentVersion(string version)
         {
+            EditorUtility.DisplayProgressBar("Build New Deployment Version", $"Build Version {version} ......", 0);
+
             if (!Directory.Exists(Target.BuildResourceFullPath))
             {
                 Directory.CreateDirectory(Target.BuildResourceFullPath);
@@ -149,14 +193,35 @@ namespace HT.Framework.Deployment
             deployment.Version = version;
             deployment.Date = DateTime.Now.ToString("yyyy.MM.dd");
 
-            #region Deployment Assembly
+            #region Deployment Metadata
 #if HOTFIX_HybridCLR
             Main main = FindObjectOfType<Main>();
             if (main == null)
             {
                 Log.Error($"Build New Deployment Version Error: 请先打开入口场景，并确保将热更新程序集添加到 Main 上！");
+                EditorUtility.ClearProgressBar();
                 return;
             }
+            for (int i = 0; i < main.MetadataNames.Length; i++)
+            {
+                string sourcePath = $"{PathToolkit.ProjectPath}HybridCLRData/AssembliesPostIl2CppStrip/{EditorUserBuildSettings.activeBuildTarget}/{main.MetadataNames[i]}.dll";
+                string destPath = $"{versionPath}{main.MetadataNames[i]}.metadata";
+                if (File.Exists(sourcePath))
+                {
+                    FileUtil.CopyFileOrDirectory(sourcePath, destPath);
+
+                    DeploymentVersion.Metadata metadata = new DeploymentVersion.Metadata();
+                    metadata.Name = main.MetadataNames[i];
+                    metadata.CRC = DeploymentUtility.GetFileMD5(destPath);
+                    metadata.Size = DeploymentUtility.GetFileSize(destPath);
+                    deployment.Metadatas.Add(metadata);
+                }
+            }
+#endif
+            #endregion
+
+            #region Deployment Assembly
+#if HOTFIX_HybridCLR
             for (int i = 0; i < main.HotfixAssemblyNames.Length; i++)
             {
                 string sourcePath = $"{PathToolkit.ProjectPath}HybridCLRData/HotUpdateDlls/{EditorUserBuildSettings.activeBuildTarget}/{main.HotfixAssemblyNames[i]}.dll";
@@ -219,6 +284,7 @@ namespace HT.Framework.Deployment
             File.WriteAllText(versionPath + "Version.json", builder.ToString());
 
             Log.Info($"Build New Deployment Version Succeed: {versionPath.Hyperlink("file:///" + versionPath)}！");
+            EditorUtility.ClearProgressBar();
         }
     }
 }

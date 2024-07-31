@@ -16,6 +16,10 @@ namespace HT.Framework.Deployment
         /// </summary>
         public string Date;
         /// <summary>
+        /// 部署的所有补充元数据
+        /// </summary>
+        public List<Metadata> Metadatas = new List<Metadata>();
+        /// <summary>
         /// 部署的所有热更新程序集
         /// </summary>
         public List<Assembly> Assemblys = new List<Assembly>();
@@ -24,6 +28,24 @@ namespace HT.Framework.Deployment
         /// </summary>
         public List<AB> ABs = new List<AB>();
 
+        /// <summary>
+        /// 部署的补充元数据
+        /// </summary>
+        public sealed class Metadata
+        {
+            /// <summary>
+            /// 名称
+            /// </summary>
+            public string Name;
+            /// <summary>
+            /// 校验码
+            /// </summary>
+            public string CRC;
+            /// <summary>
+            /// 大小（KB）
+            /// </summary>
+            public int Size;
+        }
         /// <summary>
         /// 部署的热更新程序集
         /// </summary>

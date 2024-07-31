@@ -2,7 +2,8 @@
     "name": "HTFramework.Deployment.RunTime",
     "rootNamespace": "",
     "references": [
-        "GUID:83f631a6180cc5a41982c9354b6cc704"
+        "GUID:83f631a6180cc5a41982c9354b6cc704",
+        "GUID:13ba8ce62aa80c74598530029cb2d649"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

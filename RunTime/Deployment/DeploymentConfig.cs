@@ -1,9 +1,13 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Networking;
+#if HOTFIX_HybridCLR
+using HybridCLR;
+#endif
 
 [assembly: InternalsVisibleTo("HTFramework.Deployment.Editor")]
 
@@ -16,6 +20,10 @@ namespace HT.Framework.Deployment
     [LockTransform]
     public sealed class DeploymentConfig : SingletonBehaviourBase<DeploymentConfig>
     {
+        /// <summary>
+        /// 下载文件助手的类型【请勿在代码中修改】
+        /// </summary>
+        [SerializeField] internal string HelperType = "<None>";
         /// <summary>
         /// 本地部署资源根路径【请勿在代码中修改】
         /// </summary>
@@ -37,9 +45,42 @@ namespace HT.Framework.Deployment
         /// </summary>
         [SerializeField] internal string BuildVersion = "v1.0.0";
 
+        private IDownloadFileHelper _helper;
         private Coroutine _downloadCoroutine;
         private int _startDownloadTime;
 
+        /// <summary>
+        /// 下载文件助手
+        /// </summary>
+        public IDownloadFileHelper Helper
+        {
+            get
+            {
+                if (_helper == null)
+                {
+                    if (HelperType != "<None>")
+                    {
+                        Type type = ReflectionToolkit.GetTypeInRunTimeAssemblies(HelperType, false);
+                        if (type != null)
+                        {
+                            if (typeof(IDownloadFileHelper).IsAssignableFrom(type))
+                            {
+                                _helper = Activator.CreateInstance(type) as IDownloadFileHelper;
+                            }
+                            else
+                            {
+                                Log.Error($"创建下载文件助手失败：下载文件助手类 {HelperType} 必须实现接口 IDownloadFileHelper ！");
+                            }
+                        }
+                        else
+                        {
+                            Log.Error($"创建下载文件助手失败：丢失下载文件助手类 {HelperType} ！");
+                        }
+                    }
+                }
+                return _helper;
+            }
+        }
         /// <summary>
         /// 本地部署资源根路径
         /// </summary>
@@ -135,6 +176,8 @@ namespace HT.Framework.Deployment
             versionStr = ReadLocalResourceVersion(localVersionPath);
             DeploymentVersion localDeployment = JsonToolkit.StringToJson<DeploymentVersion>(versionStr);
 
+            //待下载的所有补充元数据
+            List<DeploymentVersion.Metadata> downloadMetadatas = new List<DeploymentVersion.Metadata>();
             //待下载的所有程序集
             List<DeploymentVersion.Assembly> downloadAssemblys = new List<DeploymentVersion.Assembly>();
             //待下载的所有AB包
@@ -143,15 +186,35 @@ namespace HT.Framework.Deployment
             //本地不存在版本信息，始终下载远端全部资源
             if (localDeployment == null || string.IsNullOrEmpty(localDeployment.Version))
             {
+                downloadMetadatas.AddRange(remoteDeployment.Metadatas);
                 downloadAssemblys.AddRange(remoteDeployment.Assemblys);
                 downloadABs.AddRange(remoteDeployment.ABs);
             }
-            //对比本地与远端版本，以增量下载
+            //本地存在版本信息，对比本地与远端版本，以增量下载
             else
             {
                 //本地与远端版本不一致
                 if (remoteDeployment.Version != localDeployment.Version)
                 {
+                    //对比补充元数据
+                    for (int i = 0; i < remoteDeployment.Metadatas.Count; i++)
+                    {
+                        DeploymentVersion.Metadata remoteMetadata = remoteDeployment.Metadatas[i];
+                        DeploymentVersion.Metadata localMetadata = localDeployment.Metadatas.Find((m) => { return m.Name == remoteMetadata.Name; });
+                        //本地不存在，远端存在，为新增的补充元数据
+                        if (localMetadata == null)
+                        {
+                            downloadMetadatas.Add(remoteMetadata);
+                        }
+                        else
+                        {
+                            //本地与远端校验码不同，为修改的补充元数据
+                            if (localMetadata.CRC != remoteMetadata.CRC)
+                            {
+                                downloadMetadatas.Add(remoteMetadata);
+                            }
+                        }
+                    }
                     //对比程序集
                     for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
                     {
@@ -195,6 +258,11 @@ namespace HT.Framework.Deployment
 
             //记录下载信息
             DownloadInfo.DownloadVersion = remoteDeployment.Version;
+            for (int i = 0; i < downloadMetadatas.Count; i++)
+            {
+                DownloadInfo.TotalDownloadFileNumber += 1;
+                DownloadInfo.TotalDownloadFileSize += downloadMetadatas[i].Size;
+            }
             for (int i = 0; i < downloadAssemblys.Count; i++)
             {
                 DownloadInfo.TotalDownloadFileNumber += 1;
@@ -217,6 +285,13 @@ namespace HT.Framework.Deployment
                 }
             }
 
+            //下载补充元数据
+            for (int i = 0; i < downloadMetadatas.Count; i++)
+            {
+                string remotePath = $"{RemoteResourceFullPath}{downloadMetadatas[i].Name}.metadata";
+                string localPath = $"{LocalResourceFullPath}{downloadMetadatas[i].Name}.metadata";
+                yield return DownloadFile(remotePath, localPath, downloadMetadatas[i].Size, onUpdating);
+            }
             //下载程序集
             for (int i = 0; i < downloadAssemblys.Count; i++)
             {
@@ -239,15 +314,21 @@ namespace HT.Framework.Deployment
             //同步远端版本信息到本地
             yield return DownloadFile(remoteVersionPath, localVersionPath, 0, onUpdating, false);
 
-            UpdateResourceDone(UpdateResourceDownloadInfo.Result.Success, null);
-
 #if HOTFIX_HybridCLR && !UNITY_EDITOR
+            //自动为 HybridCLR 补充元数据
+            for (int i = 0; i < remoteDeployment.Metadatas.Count; i++)
+            {
+                string metadataPath = $"{LocalResourceFullPath}{remoteDeployment.Metadatas[i].Name}.metadata";
+                LoadImageErrorCode code = RuntimeApi.LoadMetadataForAOTAssembly(File.ReadAllBytes(metadataPath), HomologousImageMode.SuperSet);
+                Debug.Log($"Load Metadata For AOT Assembly：{remoteDeployment.Metadatas[i].Name}, Result：{code}.");
+            }
             //自动加载所有 HybridCLR 热更新程序集
             for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
             {
                 string assemblyPath = $"{LocalResourceFullPath}{remoteDeployment.Assemblys[i].Name}.bytes";
                 System.Reflection.Assembly.Load(File.ReadAllBytes(assemblyPath));
                 ReflectionToolkit.AddRunTimeAssembly(remoteDeployment.Assemblys[i].Name);
+                Debug.Log($"Load Hotfix Assembly：{remoteDeployment.Assemblys[i].Name}.");
             }
 #endif
 
@@ -255,6 +336,8 @@ namespace HT.Framework.Deployment
             Main.Current.HybridCLRCompleted();
 #endif
             Main.m_Resource.SetAssetBundlePath(LocalResourceFullPath);
+
+            UpdateResourceDone(UpdateResourceDownloadInfo.Result.Success, null);
         }
         /// <summary>
         /// 更新远端部署资源到本地 - 完成
@@ -283,6 +366,7 @@ namespace HT.Framework.Deployment
         {
             using (UnityWebRequest request = UnityWebRequest.Get(path))
             {
+                Helper?.OnBeforeDownload(request);
                 yield return request.SendWebRequest();
                 if (request.result == UnityWebRequest.Result.Success)
                 {
@@ -326,6 +410,7 @@ namespace HT.Framework.Deployment
             using (UnityWebRequest request = UnityWebRequest.Get(remotePath))
             {
                 request.downloadHandler = new DownloadHandlerFile(localPath);
+                Helper?.OnBeforeDownload(request);
                 request.SendWebRequest();
                 while (!request.isDone)
                 {

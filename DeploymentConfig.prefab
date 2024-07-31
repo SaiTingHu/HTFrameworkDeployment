@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d09a2f605482dc54f9b672fefedd7ada, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  HelperType: <None>
   LocalResourcePath: LocalResource/
   BuildResourcePath: BuildResource/
   RemoteResourcePath: 
