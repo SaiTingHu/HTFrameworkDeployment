@@ -375,6 +375,7 @@ namespace HT.Framework.Deployment
                 else
                 {
                     onComplete?.Invoke(null);
+                    Log.Error($"Update Resource Error：{request.error}");
                 }
             }
         }
