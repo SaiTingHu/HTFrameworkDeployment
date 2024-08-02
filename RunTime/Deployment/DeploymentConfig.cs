@@ -176,6 +176,8 @@ namespace HT.Framework.Deployment
             versionStr = ReadLocalResourceVersion(localVersionPath);
             DeploymentVersion localDeployment = JsonToolkit.StringToJson<DeploymentVersion>(versionStr);
 
+            //本地版本是否改变
+            bool isChange = false;
             //待下载的所有补充元数据
             List<DeploymentVersion.Metadata> downloadMetadatas = new List<DeploymentVersion.Metadata>();
             //待下载的所有程序集
@@ -186,6 +188,7 @@ namespace HT.Framework.Deployment
             //本地不存在版本信息，始终下载远端全部资源
             if (localDeployment == null || string.IsNullOrEmpty(localDeployment.Version))
             {
+                isChange = true;
                 downloadMetadatas.AddRange(remoteDeployment.Metadatas);
                 downloadAssemblys.AddRange(remoteDeployment.Assemblys);
                 downloadABs.AddRange(remoteDeployment.ABs);
@@ -196,6 +199,7 @@ namespace HT.Framework.Deployment
                 //本地与远端版本不一致
                 if (remoteDeployment.Version != localDeployment.Version)
                 {
+                    isChange = true;
                     //对比补充元数据
                     for (int i = 0; i < remoteDeployment.Metadatas.Count; i++)
                     {
@@ -254,6 +258,10 @@ namespace HT.Framework.Deployment
                         }
                     }
                 }
+                else
+                {
+                    isChange = false;
+                }
             }
 
             //记录下载信息
@@ -311,8 +319,14 @@ namespace HT.Framework.Deployment
                 yield return DownloadFile(remotePath + ".manifest", localPath + ".manifest", 0, onUpdating, false);
             }
 
-            //同步远端版本信息到本地
-            yield return DownloadFile(remoteVersionPath, localVersionPath, 0, onUpdating, false);
+            if (isChange)
+            {
+                //下载资源定位文件
+                yield return DownloadFile($"{RemoteResourceFullPath}ResourceLocation.loc", $"{LocalResourceFullPath}ResourceLocation.loc", 0, onUpdating, false);
+
+                //同步远端版本信息到本地
+                yield return DownloadFile(remoteVersionPath, localVersionPath, 0, onUpdating, false);
+            }
 
 #if HOTFIX_HybridCLR && !UNITY_EDITOR
             //自动为 HybridCLR 补充元数据

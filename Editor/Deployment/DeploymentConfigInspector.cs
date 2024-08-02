@@ -276,6 +276,21 @@ namespace HT.Framework.Deployment
             }
             #endregion
 
+            #region Deployment Resource Location
+            StringBuilder resourceLocation = new StringBuilder();
+            string[] abNames = AssetDatabase.GetAllAssetBundleNames();
+            for (int i = 0; i < abNames.Length; i++)
+            {
+                string abName = abNames[i];
+                string[] assetPaths = AssetDatabase.GetAssetPathsFromAssetBundle(abName);
+                for (int j = 0; j < assetPaths.Length; j++)
+                {
+                    resourceLocation.Append($"{abName}|{assetPaths[j]}\r\n");
+                }
+            }
+            File.WriteAllText(versionPath + "ResourceLocation.loc", resourceLocation.ToString());
+            #endregion
+
             StringBuilder builder = new StringBuilder();
             JsonWriter writer = new JsonWriter(builder);
             writer.PrettyPrint = true;
