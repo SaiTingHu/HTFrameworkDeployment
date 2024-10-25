@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using UnityEditor;
+using UnityEditor.Build.Player;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using static AssetBundleBrowser.AssetBundleBuildTab;
@@ -45,6 +46,7 @@ namespace HT.Framework.Deployment
 
         private List<Type> _types;
         private bool _isCanBuild = false;
+        private BuildTarget _buildTarget = BuildTarget.Android;
 
         protected override bool IsEnableRuntimeData => false;
 
@@ -138,6 +140,31 @@ namespace HT.Framework.Deployment
             Target.RemoteResourcePath = EditorGUILayout.TextField(Target.RemoteResourcePath, EditorStyles.label);
             GUILayout.EndHorizontal();
 
+#if HOTFIX_HybridCLR && !HybridCLR_5
+            GUILayout.Space(10);
+
+            GUILayout.BeginHorizontal();
+            GUI.color = Color.green;
+            GUILayout.Label("Compile Originating DLL", EditorStyles.largeLabel);
+            GUI.color = Color.white;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUI.color = Color.green;
+            GUILayout.Label("Platform", GUILayout.Width(60));
+            _buildTarget = (BuildTarget)EditorGUILayout.EnumPopup(_buildTarget);
+            GUI.color = Color.white;
+            GUI.backgroundColor = Color.green;
+            if (GUILayout.Button("Compile"))
+            {
+                if (EditorUtility.DisplayDialog("Compile Originating DLL", "是否确认开始编译源生程序集？", "是的", "我再想想"))
+                {
+                    CompileOriginatingDLL();
+                }
+            }
+            GUI.backgroundColor = Color.white;
+            GUILayout.EndHorizontal();
+#endif
             GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
@@ -171,6 +198,20 @@ namespace HT.Framework.Deployment
         }
 
         /// <summary>
+        /// 编译源生程序集
+        /// </summary>
+        private void CompileOriginatingDLL()
+        {
+            BuildTargetGroup group = BuildPipeline.GetBuildTargetGroup(_buildTarget);
+            ScriptCompilationSettings scriptCompilationSettings = new ScriptCompilationSettings();
+            scriptCompilationSettings.group = group;
+            scriptCompilationSettings.target = _buildTarget;
+            PlayerBuildInterface.CompilePlayerScripts(scriptCompilationSettings, Target.BuildResourceFullPath + "ScriptAssemblies");
+
+            EditorUtility.ClearProgressBar();
+            Log.Info("编译源生程序集完成！");
+        }
+        /// <summary>
         /// 构建新的部署版本
         /// </summary>
         private void BuildNewDeploymentVersion(string version)
@@ -193,8 +234,6 @@ namespace HT.Framework.Deployment
             deployment.Version = version;
             deployment.Date = DateTime.Now.ToString("yyyy.MM.dd");
 
-            #region Deployment Metadata
-#if HOTFIX_HybridCLR
             Main main = FindObjectOfType<Main>();
             if (main == null)
             {
@@ -202,6 +241,9 @@ namespace HT.Framework.Deployment
                 EditorUtility.ClearProgressBar();
                 return;
             }
+
+            #region Deployment Metadata
+#if HOTFIX_HybridCLR && HybridCLR_5
             for (int i = 0; i < main.MetadataNames.Length; i++)
             {
                 string sourcePath = $"{PathToolkit.ProjectPath}HybridCLRData/AssembliesPostIl2CppStrip/{EditorUserBuildSettings.activeBuildTarget}/{main.MetadataNames[i]}.dll";
@@ -221,7 +263,7 @@ namespace HT.Framework.Deployment
             #endregion
 
             #region Deployment Assembly
-#if HOTFIX_HybridCLR
+#if HOTFIX_HybridCLR && HybridCLR_5
             for (int i = 0; i < main.HotfixAssemblyNames.Length; i++)
             {
                 string sourcePath = $"{PathToolkit.ProjectPath}HybridCLRData/HotUpdateDlls/{EditorUserBuildSettings.activeBuildTarget}/{main.HotfixAssemblyNames[i]}.dll";
@@ -238,10 +280,28 @@ namespace HT.Framework.Deployment
                 }
             }
 #endif
+
+#if HOTFIX_HybridCLR && !HybridCLR_5
+            for (int i = 0; i < main.HotfixAssemblyNames.Length; i++)
+            {
+                string sourcePath = $"{Target.BuildResourceFullPath}ScriptAssemblies/{main.HotfixAssemblyNames[i]}.dll";
+                string destPath = $"{versionPath}{main.HotfixAssemblyNames[i]}.bytes";
+                if (File.Exists(sourcePath))
+                {
+                    FileUtil.CopyFileOrDirectory(sourcePath, destPath);
+
+                    DeploymentVersion.Assembly assembly = new DeploymentVersion.Assembly();
+                    assembly.Name = main.HotfixAssemblyNames[i];
+                    assembly.CRC = DeploymentUtility.GetFileMD5(destPath);
+                    assembly.Size = DeploymentUtility.GetFileSize(destPath);
+                    deployment.Assemblys.Add(assembly);
+                }
+            }
+#endif
             #endregion
 
             #region Deployment AB
-            string dataPath = PathToolkit.ProjectPath + "/Library/AssetBundleBrowserBuild.dat";
+            string dataPath = PathToolkit.ProjectPath + "Library/AssetBundleBrowserBuild.dat";
             if (File.Exists(dataPath))
             {
                 BinaryFormatter bf = new BinaryFormatter();

@@ -5,7 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Networking;
-#if HOTFIX_HybridCLR
+#if HOTFIX_HybridCLR && HybridCLR_5
 using HybridCLR;
 #endif
 
@@ -328,7 +328,8 @@ namespace HT.Framework.Deployment
                 yield return DownloadFile(remoteVersionPath, localVersionPath, 0, onUpdating, false);
             }
 
-#if HOTFIX_HybridCLR && !UNITY_EDITOR
+            //启用 HybridCLR 热更新，自动补充元数据、加载热更程序集
+#if HOTFIX_HybridCLR && HybridCLR_5 && !UNITY_EDITOR
             //自动为 HybridCLR 补充元数据
             for (int i = 0; i < remoteDeployment.Metadatas.Count; i++)
             {
@@ -337,6 +338,18 @@ namespace HT.Framework.Deployment
                 Debug.Log($"Load Metadata For AOT Assembly：{remoteDeployment.Metadatas[i].Name}, Result：{code}.");
             }
             //自动加载所有 HybridCLR 热更新程序集
+            for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
+            {
+                string assemblyPath = $"{LocalResourceFullPath}{remoteDeployment.Assemblys[i].Name}.bytes";
+                System.Reflection.Assembly.Load(File.ReadAllBytes(assemblyPath));
+                ReflectionToolkit.AddRunTimeAssembly(remoteDeployment.Assemblys[i].Name);
+                Debug.Log($"Load Hotfix Assembly：{remoteDeployment.Assemblys[i].Name}.");
+            }
+#endif
+
+            //未启用 HybridCLR 热更新，使用源生程序集热更方式
+#if HOTFIX_HybridCLR && !HybridCLR_5
+            //自动加载所有热更新程序集
             for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
             {
                 string assemblyPath = $"{LocalResourceFullPath}{remoteDeployment.Assemblys[i].Name}.bytes";
