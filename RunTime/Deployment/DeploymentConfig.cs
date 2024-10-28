@@ -41,9 +41,9 @@ namespace HT.Framework.Deployment
         /// </summary>
         [SerializeField] internal PathType ResourcePathType = PathType.PersistentData;
         /// <summary>
-        /// 是否在编辑器模式下加载热更程序集【请勿在代码中修改】
+        /// 是否自动加载热更程序集【请勿在代码中修改】
         /// </summary>
-        [SerializeField] internal bool IsLoadAssemblyInEditor = false;
+        [SerializeField] internal bool IsAutoLoadAssembly = false;
         /// <summary>
         /// 构建部署版本号【请勿在代码中修改】
         /// </summary>
@@ -354,7 +354,7 @@ namespace HT.Framework.Deployment
             //未启用 HybridCLR 热更新，使用源生程序集热更方式
 #if HOTFIX_HybridCLR && !HybridCLR_5
             //自动加载所有热更新程序集
-            if (IsLoadAssemblyInEditor)
+            if (IsAutoLoadAssembly)
             {
                 for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
                 {

@@ -167,7 +167,7 @@ namespace HT.Framework.Deployment
 
             GUILayout.BeginHorizontal();
             GUI.color = Color.green;
-            Target.IsLoadAssemblyInEditor = EditorGUILayout.Toggle("Load Assembly In Editor", Target.IsLoadAssemblyInEditor);
+            Target.IsAutoLoadAssembly = EditorGUILayout.Toggle("Auto Load Assembly", Target.IsAutoLoadAssembly);
             GUI.color = Color.white;
             GUILayout.EndHorizontal();
 #endif
