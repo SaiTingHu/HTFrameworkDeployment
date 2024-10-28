@@ -49,4 +49,5 @@ MonoBehaviour:
   BuildResourcePath: BuildResource/
   RemoteResourcePath: 
   ResourcePathType: 0
+  IsLoadAssemblyInEditor: 0
   BuildVersion: v1.0.0

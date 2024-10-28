@@ -164,6 +164,12 @@ namespace HT.Framework.Deployment
             }
             GUI.backgroundColor = Color.white;
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUI.color = Color.green;
+            Target.IsLoadAssemblyInEditor = EditorGUILayout.Toggle("Load Assembly In Editor", Target.IsLoadAssemblyInEditor);
+            GUI.color = Color.white;
+            GUILayout.EndHorizontal();
 #endif
             GUILayout.Space(10);
 

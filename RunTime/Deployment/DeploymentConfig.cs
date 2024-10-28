@@ -41,6 +41,10 @@ namespace HT.Framework.Deployment
         /// </summary>
         [SerializeField] internal PathType ResourcePathType = PathType.PersistentData;
         /// <summary>
+        /// 是否在编辑器模式下加载热更程序集【请勿在代码中修改】
+        /// </summary>
+        [SerializeField] internal bool IsLoadAssemblyInEditor = false;
+        /// <summary>
         /// 构建部署版本号【请勿在代码中修改】
         /// </summary>
         [SerializeField] internal string BuildVersion = "v1.0.0";
@@ -350,12 +354,15 @@ namespace HT.Framework.Deployment
             //未启用 HybridCLR 热更新，使用源生程序集热更方式
 #if HOTFIX_HybridCLR && !HybridCLR_5
             //自动加载所有热更新程序集
-            for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
+            if (IsLoadAssemblyInEditor)
             {
-                string assemblyPath = $"{LocalResourceFullPath}{remoteDeployment.Assemblys[i].Name}.bytes";
-                System.Reflection.Assembly.Load(File.ReadAllBytes(assemblyPath));
-                ReflectionToolkit.AddRunTimeAssembly(remoteDeployment.Assemblys[i].Name);
-                Debug.Log($"Load Hotfix Assembly：{remoteDeployment.Assemblys[i].Name}.");
+                for (int i = 0; i < remoteDeployment.Assemblys.Count; i++)
+                {
+                    string assemblyPath = $"{LocalResourceFullPath}{remoteDeployment.Assemblys[i].Name}.bytes";
+                    System.Reflection.Assembly.Load(File.ReadAllBytes(assemblyPath));
+                    ReflectionToolkit.AddRunTimeAssembly(remoteDeployment.Assemblys[i].Name);
+                    Debug.Log($"Load Hotfix Assembly：{remoteDeployment.Assemblys[i].Name}.");
+                }
             }
 #endif
 
