@@ -215,7 +215,7 @@ namespace HT.Framework.Deployment
             PlayerBuildInterface.CompilePlayerScripts(scriptCompilationSettings, Target.BuildResourceFullPath + "ScriptAssemblies");
 
             EditorUtility.ClearProgressBar();
-            Log.Info("编译源生程序集完成！");
+            Log.Info("Deployment：编译源生程序集完成！");
         }
         /// <summary>
         /// 构建新的部署版本
@@ -357,6 +357,10 @@ namespace HT.Framework.Deployment
             File.WriteAllText(versionPath + "ResourceLocation.loc", resourceLocation.ToString());
             #endregion
 
+            #region Deployment Release Notes
+            File.WriteAllText(versionPath + "ReleaseNotes.txt", "");
+            #endregion
+
             StringBuilder builder = new StringBuilder();
             JsonWriter writer = new JsonWriter(builder);
             writer.PrettyPrint = true;
@@ -365,6 +369,7 @@ namespace HT.Framework.Deployment
             File.WriteAllText(versionPath + "Version.json", builder.ToString());
 
             Log.Info($"Build New Deployment Version Succeed: {versionPath.Hyperlink("file:///" + versionPath)}！");
+            Log.Info("请自行编辑此版本的发行日志：ReleaseNotes.txt。");
             EditorUtility.ClearProgressBar();
         }
     }
