@@ -15,6 +15,8 @@ namespace HT.Framework.Deployment
     /// 部署配置 - 检视器
     /// </summary>
     [CustomEditor(typeof(DeploymentConfig))]
+    [GithubURL("https://github.com/SaiTingHu/HTFrameworkDeployment")]
+    [CSDNBlogURL("https://wanderer.blog.csdn.net/article/details/140823964")]
     internal sealed class DeploymentConfigInspector : HTFEditor<DeploymentConfig>
     {
         [MenuItem("GameObject/HTFramework/★ Deployment/Config", true)]
