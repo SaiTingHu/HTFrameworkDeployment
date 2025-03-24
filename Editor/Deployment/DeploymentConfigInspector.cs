@@ -120,7 +120,7 @@ namespace HT.Framework.Deployment
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Build Resource Path");
+            EditorGUILayout.LabelField("Build Resource Path");
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal(EditorStyles.textField);
@@ -135,7 +135,7 @@ namespace HT.Framework.Deployment
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Remote Resource Path");
+            EditorGUILayout.LabelField("Remote Resource Path");
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal(EditorStyles.textField);
@@ -147,13 +147,13 @@ namespace HT.Framework.Deployment
 
             GUILayout.BeginHorizontal();
             GUI.color = Color.green;
-            GUILayout.Label("Compile Originating DLL", EditorStyles.largeLabel);
+            EditorGUILayout.LabelField("Compile Originating DLL", EditorStyles.largeLabel);
             GUI.color = Color.white;
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             GUI.color = Color.green;
-            GUILayout.Label("Platform", GUILayout.Width(60));
+            EditorGUILayout.LabelField("Platform", GUILayout.Width(60));
             _buildTarget = (BuildTarget)EditorGUILayout.EnumPopup(_buildTarget);
             GUI.color = Color.white;
             GUI.backgroundColor = Color.green;
@@ -177,13 +177,13 @@ namespace HT.Framework.Deployment
 
             GUILayout.BeginHorizontal();
             GUI.color = Color.green;
-            GUILayout.Label("Build New Deployment Version", EditorStyles.largeLabel);
+            EditorGUILayout.LabelField("Build New Deployment Version", EditorStyles.largeLabel);
             GUI.color = Color.white;
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             GUI.color = Color.green;
-            GUILayout.Label("Version", GUILayout.Width(60));
+            EditorGUILayout.LabelField("Version", GUILayout.Width(60));
             Target.BuildVersion = EditorGUILayout.TextField(Target.BuildVersion);
             GUI.color = Color.white;
             GUI.enabled = _isCanBuild && !string.IsNullOrEmpty(Target.BuildVersion);
