@@ -35,11 +35,15 @@ namespace HT.Framework.Deployment
                 return null;
 
             string[] content = File.ReadAllLines(path);
-            if (content.Length >= 2 && content[1].StartsWith("CRC:"))
+            for (int i = 0; i < content.Length; i++)
             {
-                string crc = content[1].Replace("CRC:", "").Trim();
-                return crc;
+                if (content[i].StartsWith("CRC:"))
+                {
+                    string crc = content[i].Replace("CRC:", "").Trim();
+                    return crc;
+                }
             }
+
             return null;
         }
         /// <summary>
